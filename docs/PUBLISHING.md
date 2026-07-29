@@ -14,7 +14,7 @@ This package uses [npm Trusted Publishing](https://docs.npmjs.com/trusted-publis
 | Public GitHub repo | Required for provenance attestations |
 | Workflow filename matches npm config | `publish.yml` |
 
-Provenance is enabled via `publishConfig.provenance` and is generated automatically when publishing through Trusted Publishing.
+Provenance is generated automatically in CI via Trusted Publishing (OIDC). Local `npm run deploy` disables provenance with `--provenance=false` because attestations require a CI provider.
 
 ## One-time npm setup
 
@@ -59,6 +59,15 @@ The workflow filename is case-sensitive and must match exactly.
 ```bash
 npm run deploy
 ```
+
+Or after login:
+
+```bash
+npm login --registry=https://registry.npmjs.org
+npm run deploy
+```
+
+If Yarn is your default package manager, its global registry may be `registry.yarnpkg.com`. This package forces `registry.npmjs.org` via `.npmrc` and `publishConfig.registry`.
 
 Prefer tag-based CI publishes so provenance and Trusted Publishing stay consistent.
 

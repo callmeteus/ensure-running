@@ -13,7 +13,7 @@
     "homepage": "https://github.com/callmeteus/ensure-running#readme",
     "publishConfig": {
         "access": "public",
-        "provenance": true
+        "registry": "https://registry.npmjs.org"
     },
     "type": "module",
     "main": "./dist/index.cjs",
@@ -51,7 +51,7 @@
         "typecheck": "tsc --noEmit",
         "ci": "npm run lint && npm run typecheck && npm run test:coverage && npm run build",
         "prepublishOnly": "npm run ci",
-        "deploy": "npm run prepublishOnly && npm publish"
+        "deploy": "npm run prepublishOnly && npm publish --registry=https://registry.npmjs.org --provenance=false"
     },
     "dependencies": {
         "jiti": "^2.4.2"

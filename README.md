@@ -334,7 +334,7 @@ See [docs/PUBLISHING.md](./docs/PUBLISHING.md) for full setup, npm requirements,
 npm run deploy
 ```
 
-Requires `npm login`. Prefer tag-based CI releases.
+Requires `npm login` against `registry.npmjs.org`. If you use Yarn globally, this repo pins npm via `.npmrc` and `publishConfig.registry` so `yarn deploy` does not target `registry.yarnpkg.com`. Prefer tag-based CI releases.
 
 Requires Node.js >= 20.
 
