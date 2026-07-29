@@ -43,20 +43,18 @@ The CLI uses `parseInvocation()` to:
 
 1. Read consecutive provider tokens from argv.
 2. Let each provider consume its own flags.
-3. Treat the rest as an optional command (`vite dev`, `npm test`, etc.).
-4. Honor an explicit `--` separator before the command.
+3. Require `--` before the trailing command (`vite dev`, `npm test`, etc.).
+4. Spawn the command after all providers succeed.
 
 ## Chaining examples
 
 ```text
 er docker
 er docker --check
-er docker -- vite dev
-er docker vite dev
-er docker postgres -- npm test   # postgres = future provider
+er docker postgres -- vite dev
 ```
 
-`parseInvocation` only treats a token as a provider when it matches a registry entry. Anything else becomes the start of the trailing command.
+`--` is required before the command. Without it, trailing tokens throw `CommandSeparatorError`.
 
 ## Docker package
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { normalizeArgv } from "../../src/argv";
 import { ProviderRegistry } from "../../src/registry";
-import { parseInvocation, runCommand } from "../../src/runner";
+import { parseInvocation, runCommand, CommandSeparatorError, MissingCommandError } from "../../src/runner";
 import type { EnsureProvider } from "../../src/provider";
 
 function createStubProvider(id: string, aliases: string[] = []): EnsureProvider<{ value: string }> {
@@ -52,22 +52,40 @@ describe("Core", () => {
             registry.register(alpha);
             registry.register(beta);
 
-            const parsed = parseInvocation(["alpha", "beta", "vite", "dev"], registry);
+            const parsed = parseInvocation(["alpha", "beta", "--", "vite", "dev"], registry);
 
             expect(parsed.providers.map((entry) => entry.provider.id)).toEqual(["alpha", "beta"]);
             expect(parsed.command).toEqual(["vite", "dev"]);
         });
 
-        it("parses provider flags before the command", () => {
+        it("parses provider flags before the command separator", () => {
             const registry = new ProviderRegistry();
             const alpha = createStubProvider("alpha");
 
             registry.register(alpha);
 
-            const parsed = parseInvocation(["alpha", "--flag", "ok", "npm", "test"], registry);
+            const parsed = parseInvocation(["alpha", "--flag", "ok", "--", "npm", "test"], registry);
 
             expect(parsed.providers[0]?.options).toEqual({ value: "ok" });
             expect(parsed.command).toEqual(["npm", "test"]);
+        });
+
+        it("requires -- before the trailing command", () => {
+            const registry = new ProviderRegistry();
+            const alpha = createStubProvider("alpha");
+
+            registry.register(alpha);
+
+            expect(() => parseInvocation(["alpha", "vite", "dev"], registry)).toThrow(CommandSeparatorError);
+        });
+
+        it("requires a command after --", () => {
+            const registry = new ProviderRegistry();
+            const alpha = createStubProvider("alpha");
+
+            registry.register(alpha);
+
+            expect(() => parseInvocation(["alpha", "--"], registry)).toThrow(MissingCommandError);
         });
 
         it("supports explicit command separator", () => {

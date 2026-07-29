@@ -4,6 +4,31 @@ import { normalizeArgv } from "../argv";
 import type { EnsureProvider } from "../provider";
 import type { ProviderRegistry } from "../registry";
 
+/** Separator between provider chain and trailing command. */
+export const CommandSeparator = "--";
+
+/**
+ * Thrown when argv tokens appear after providers without {@link CommandSeparator}.
+ */
+export class CommandSeparatorError extends Error {
+    constructor(token: string) {
+        super(
+            `Unexpected argument "${token}". Use "${CommandSeparator}" before the command (e.g. er docker postgres ${CommandSeparator} vite dev).`
+        );
+        this.name = "CommandSeparatorError";
+    }
+}
+
+/**
+ * Thrown when {@link CommandSeparator} is present without a trailing command.
+ */
+export class MissingCommandError extends Error {
+    constructor() {
+        super(`Command separator "${CommandSeparator}" must be followed by a command.`);
+        this.name = "MissingCommandError";
+    }
+}
+
 /**
  * One provider invocation parsed from argv.
  */
@@ -22,6 +47,7 @@ export interface ParsedInvocation {
 
 /**
  * Parses argv into chained provider invocations and an optional trailing command.
+ * A trailing command requires an explicit {@link CommandSeparator} after providers.
  */
 export function parseInvocation(argv: string[], registry: ProviderRegistry): ParsedInvocation {
     let remaining = normalizeArgv(argv);
@@ -44,11 +70,20 @@ export function parseInvocation(argv: string[], registry: ProviderRegistry): Par
         remaining = parsed.remaining;
     }
 
-    if (remaining[0] === "--") {
-        remaining = remaining.slice(1);
-    }
+    let command: string[] | undefined;
 
-    const command = remaining.length > 0 ? remaining : undefined;
+    if (remaining.length === 0) {
+        command = undefined;
+    } else
+    if (remaining[0] === CommandSeparator) {
+        command = remaining.slice(1);
+
+        if (command.length === 0) {
+            throw new MissingCommandError();
+        }
+    } else {
+        throw new CommandSeparatorError(remaining[0] ?? "");
+    }
 
     return {
         providers,

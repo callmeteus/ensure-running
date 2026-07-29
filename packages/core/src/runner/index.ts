@@ -1,4 +1,7 @@
 export {
+    CommandSeparator,
+    CommandSeparatorError,
+    MissingCommandError,
     parseInvocation,
     runCommand,
     runInvocation,

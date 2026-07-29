@@ -1,13 +1,33 @@
 import { defineConfig } from "tsup";
 
-export default defineConfig({
-    entry: {
-        "bin/ensure-running": "src/bin/ensure-running.ts"
-    },
-    format: ["esm"],
+const sharedOptions = {
+    target: "node20" as const,
     sourcemap: true,
-    clean: true,
-    target: "node20",
     splitting: false,
-    noExternal: ["@ensure-running/core", "@ensure-running/docker"]
-});
+    outExtension({ format }: { format: string }) {
+        return {
+            js: format === "cjs" ? ".cjs" : ".js"
+        };
+    }
+};
+
+export default defineConfig([
+    {
+        ...sharedOptions,
+        entry: {
+            index: "src/index.ts"
+        },
+        format: ["esm", "cjs"],
+        dts: true,
+        clean: true,
+        noExternal: ["@ensure-running/core", "@ensure-running/docker"]
+    },
+    {
+        ...sharedOptions,
+        entry: {
+            "bin/ensure-running": "src/bin/ensure-running.ts"
+        },
+        format: ["esm"],
+        noExternal: ["@ensure-running/core", "@ensure-running/docker"]
+    }
+]);

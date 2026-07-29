@@ -36,7 +36,7 @@ describe("Cli", () => {
         const runInvocationSpy = vi.spyOn(core, "runInvocation").mockResolvedValue(0);
         const { createDefaultRegistry, runCli } = await import("../../src/cli");
 
-        await expect(runCli(["docker", "vite", "dev"], createDefaultRegistry())).resolves.toBe(0);
+        await expect(runCli(["docker", "--", "vite", "dev"], createDefaultRegistry())).resolves.toBe(0);
         expect(runInvocationSpy).toHaveBeenCalled();
 
         runInvocationSpy.mockRestore();

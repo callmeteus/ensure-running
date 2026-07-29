@@ -4,7 +4,7 @@
 
 > Chainable CLI to ensure local services are ready before running commands
 
-**`er docker vite dev` - detect Docker, auto-start if needed, poll until ready, then run your script.**
+**`er docker postgres -- vite dev` - ensure providers, then run your script.**
 
 [![npm version](https://img.shields.io/npm/v/ensure-running.svg)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
@@ -78,7 +78,9 @@ ensure-running docker --timeout 60000 -- npm test
 | `er docker` | Ensure Docker is installed, started, and ready |
 | `er docker --check` | Exit 0 only when the daemon responds; never auto-start |
 | `er docker -- vite dev` | Ensure Docker, then run `vite dev` |
-| `er docker vite dev` | Same as above (`vite` is not a provider, so it becomes the command) |
+| `er docker postgres -- npm test` | Chain providers, then run command (postgres = future) |
+
+`--` is **required** before the command. Without it, `er docker vite dev` is an error.
 
 ### package.json
 
@@ -92,15 +94,49 @@ ensure-running docker --timeout 60000 -- npm test
 }
 ```
 
-Use `--` when you want an explicit separator. Without it, the first non-provider token starts the trailing command.
+Use `--` to separate providers from the command. It is required when running a trailing command.
 
-### Programmatic (Docker)
+### API
 
 ```typescript
-import { ensureDockerRunning } from "@ensure-running/docker";
+import {
+    ensureRunning,
+    runEnsureRunning,
+    ensureDocker,
+    ensure
+} from "ensure-running";
 
-await ensureDockerRunning();
+// Chain providers (same model as the CLI)
+await ensureRunning(["docker"]);
+
+await ensureRunning({
+    providers: [
+        { provider: "docker", options: { timeout: 60_000 } }
+    ]
+});
+
+// Ensure, then spawn a command (like `er docker -- vite dev`)
+const exitCode = await runEnsureRunning({
+    providers: ["docker"],
+    command: ["vite", "dev"]
+});
+
+// Docker shorthand with typed errors
+await ensureDocker();
+await ensure.docker({ check: true });
+
+// Low-level docker package (also re-exported from ensure-running)
+import { ensureDockerRunning, detectDocker } from "ensure-running";
+await ensureDockerRunning({ autoStart: true });
 ```
+
+| API | Description |
+|-----|-------------|
+| `ensureRunning(providers)` | Ensure one or more providers; throws `EnsureRunningError` |
+| `ensureRunning({ providers, command? })` | Same, with optional structured request |
+| `runEnsureRunning({ providers, command? })` | Ensure providers, then spawn `command`; returns exit code |
+| `ensureDocker(options?)` | Docker-only helper; throws `DockerError` subclasses |
+| `ensure.docker()` / `ensure.running()` | Namespaced aliases |
 
 ---
 
@@ -137,9 +173,21 @@ await ensureDockerRunning();
 
 | Package | npm name | Description |
 |---------|----------|-------------|
-| `packages/cli` | `ensure-running` | CLI binaries `er` and `ensure-running` |
+| `packages/cli` | `ensure-running` | CLI (`er`) + programmatic API |
 | `packages/docker` | `@ensure-running/docker` | Docker detection, auto-start, polling, typed errors |
 | `packages/core` | `@ensure-running/core` | Provider registry, argv parsing, chaining runner |
+
+### ensure-running exports
+
+| Export | Description |
+|--------|-------------|
+| `ensureRunning(providers)` | Chain providers programmatically |
+| `runEnsureRunning(request)` | Ensure providers, then run a command |
+| `ensureDocker(options?)` | Docker shorthand with typed errors |
+| `ensure` | `{ docker, running }` namespace |
+| `runCli(argv)` | Programmatic CLI entry (returns exit code) |
+| `createDefaultRegistry()` | Built-in provider registry |
+| `EnsureRunningError` | Provider failure with `providerId` and `exitCode` |
 
 ### Docker library exports
 
@@ -174,9 +222,9 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for module graphs, platform start order
 
 This repo is the multi-provider evolution. Docker logic lives in `@ensure-running/docker`. The CLI is `ensure-running` / `er` with subcommands per provider.
 
-**Does `er docker vite` run vite on PATH?**
+**Does `er docker -- vite` run vite on PATH?**
 
-Yes. After providers finish, the trailing tokens are spawned with inherited stdio (`shell: true` on Windows).
+Yes. Tokens after `--` are spawned as a command with inherited stdio (`shell: true` on Windows).
 
 **WSL2 / Colima / Rancher Desktop**
 

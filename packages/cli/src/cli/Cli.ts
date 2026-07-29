@@ -4,11 +4,12 @@ import { fileURLToPath } from "node:url";
 import {
     normalizeArgv,
     parseInvocation,
-    ProviderRegistry,
     runInvocation,
     type EnsureProvider
 } from "@ensure-running/core";
-import { dockerProvider } from "@ensure-running/docker";
+
+import { createDefaultRegistry } from "../providers/DefaultRegistry";
+import type { ProviderRegistry } from "@ensure-running/core";
 
 /**
  * Global CLI modes.
@@ -19,16 +20,7 @@ export enum CliMode {
     RUN = "RUN"
 }
 
-/**
- * Built-in providers shipped with the CLI.
- */
-export function createDefaultRegistry(): ProviderRegistry {
-    const registry = new ProviderRegistry();
-
-    registry.register(dockerProvider);
-
-    return registry;
-}
+export { createDefaultRegistry };
 
 /**
  * Reads the CLI package version from package.json.
@@ -59,8 +51,10 @@ ${providerLines}
 Examples:
   er docker
   er docker --check
-  er docker -- vite dev
-  er docker postgres -- npm test
+  er docker postgres -- vite dev
+  er docker --timeout 60000 -- npm test
+
+Use "--" to separate providers from the command you want to run.
 
 Global options:
   -h, --help       Show this help message
