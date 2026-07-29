@@ -8,6 +8,14 @@ export {
     DockerStartError,
     DockerTimeoutError
 } from "./errors";
+export {
+    DockerProviderMode,
+    dockerProvider,
+    parseDockerProviderArgs,
+    printDockerProviderHelp,
+    runDockerProvider,
+    type DockerProviderOptions
+} from "./provider";
 export type {
     DockerDetectionResult,
     DockerLogger,

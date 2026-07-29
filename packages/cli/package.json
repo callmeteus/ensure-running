@@ -1,0 +1,25 @@
+{
+    "name": "ensure-running",
+    "version": "1.0.0",
+    "description": "Chainable CLI to ensure local services are ready before running commands",
+    "license": "MIT",
+    "type": "module",
+    "bin": {
+        "ensure-running": "./dist/bin/ensure-running.js",
+        "er": "./dist/bin/ensure-running.js"
+    },
+    "files": [
+        "dist"
+    ],
+    "engines": {
+        "node": ">=20"
+    },
+    "scripts": {
+        "build": "tsup",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@ensure-running/core": "1.0.0",
+        "@ensure-running/docker": "1.0.0"
+    }
+}

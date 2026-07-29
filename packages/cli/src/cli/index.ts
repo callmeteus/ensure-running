@@ -1,8 +1,7 @@
 export {
     CliMode,
-    parseCliArgs,
+    createDefaultRegistry,
     printCliHelp,
     readPackageVersion,
-    runCli,
-    type ParsedCliArgs
+    runCli
 } from "./Cli";

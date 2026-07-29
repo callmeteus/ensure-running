@@ -7,10 +7,10 @@ export default tseslint.config(
     ...tseslint.configs.recommended,
     eslintConfigPrettier,
     {
-        ignores: ["dist/**", "node_modules/**"]
+        ignores: ["**/dist/**", "**/node_modules/**"]
     },
     {
-        files: ["src/**/*.ts", "tests/**/*.ts"],
+        files: ["packages/**/src/**/*.ts", "packages/**/tests/**/*.ts"],
         languageOptions: {
             parserOptions: {
                 projectService: true,

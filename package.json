@@ -1,51 +1,26 @@
 {
-    "name": "ensure-docker-running",
+    "name": "ensure-running-workspace",
+    "private": true,
     "version": "1.0.0",
-    "description": "Ensure Docker is installed, started, and ready - cross-platform",
-    "license": "MIT",
     "type": "module",
-    "main": "./dist/index.cjs",
-    "module": "./dist/index.js",
-    "types": "./dist/index.d.ts",
-    "exports": {
-        ".": {
-            "import": {
-                "types": "./dist/index.d.ts",
-                "default": "./dist/index.js"
-            },
-            "require": {
-                "types": "./dist/index.d.cts",
-                "default": "./dist/index.cjs"
-            }
-        }
-    },
-    "bin": {
-        "ensure-docker-running": "./dist/bin/ensure-docker-running.js",
-        "edr": "./dist/bin/ensure-docker-running.js"
-    },
-    "files": [
-        "dist"
+    "description": "Chainable CLI to ensure local services are ready before running commands",
+    "license": "MIT",
+    "workspaces": [
+        "packages/*"
     ],
     "engines": {
         "node": ">=20"
     },
     "scripts": {
-        "build": "tsup",
-        "dev": "tsx src/bin/ensure-docker-running.ts",
-        "start": "node dist/bin/ensure-docker-running.js",
+        "build": "npm run build -w @ensure-running/core && npm run build -w @ensure-running/docker && npm run build -w ensure-running",
+        "dev": "tsx packages/cli/src/bin/ensure-running.ts",
+        "start": "node packages/cli/dist/bin/ensure-running.js",
         "test": "vitest run",
         "test:coverage": "vitest run --coverage",
-        "lint": "eslint src tests --max-warnings=0",
-        "typecheck": "tsc --noEmit",
+        "lint": "eslint packages --max-warnings=0",
+        "typecheck": "npm run typecheck -w @ensure-running/core && npm run typecheck -w @ensure-running/docker && npm run typecheck -w ensure-running",
         "prepublishOnly": "npm run lint && npm run typecheck && npm run test:coverage && npm run build"
     },
-    "keywords": [
-        "docker",
-        "daemon",
-        "cli",
-        "cross-platform",
-        "docker-desktop"
-    ],
     "devDependencies": {
         "@eslint/js": "^9.18.0",
         "@types/node": "^22.10.5",
