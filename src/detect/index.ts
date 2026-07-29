@@ -1,0 +1,1 @@
+export { detectDocker } from "./Detect";
