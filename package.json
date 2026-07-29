@@ -3,6 +3,18 @@
     "version": "1.0.0",
     "description": "Chainable CLI and API to ensure local services are ready before running commands",
     "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/callmeteus/ensure-running.git"
+    },
+    "bugs": {
+        "url": "https://github.com/callmeteus/ensure-running/issues"
+    },
+    "homepage": "https://github.com/callmeteus/ensure-running#readme",
+    "publishConfig": {
+        "access": "public",
+        "provenance": true
+    },
     "type": "module",
     "main": "./dist/index.cjs",
     "module": "./dist/index.js",
@@ -37,7 +49,8 @@
         "test:coverage": "vitest run --coverage",
         "lint": "eslint src tests --max-warnings=0",
         "typecheck": "tsc --noEmit",
-        "prepublishOnly": "npm run lint && npm run typecheck && npm run test:coverage && npm run build",
+        "ci": "npm run lint && npm run typecheck && npm run test:coverage && npm run build",
+        "prepublishOnly": "npm run ci",
         "deploy": "npm run prepublishOnly && npm publish"
     },
     "dependencies": {

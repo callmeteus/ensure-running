@@ -303,15 +303,38 @@ er docker --version
 | `yarn dev docker ...` | Run CLI via `tsx` without building |
 | `npm run build` | Build library + bin |
 | `npm test` | Vitest unit tests |
-| `yarn deploy` | Lint, test, build, then `npm publish` |
+| `npm run ci` | Lint, typecheck, coverage, and build (same gate as release) |
+| `yarn deploy` | Local publish (prefer CI tag releases) |
 
-### Publish
+### Publish (GitHub Actions + npm Trusted Publishing)
+
+Releases are published from CI when you push a `v*` tag. No `NPM_TOKEN` secret is required - npm authenticates the workflow via OIDC.
+
+**One-time setup on npmjs.com:**
+
+1. Package settings -> **Trusted publishing** -> GitHub Actions
+2. Owner `callmeteus`, repo `ensure-running`, workflow `publish.yml`
+3. Allow action `npm publish`
+
+**Release:**
 
 ```bash
-yarn deploy
+# bump version in package.json first
+git tag v1.0.1
+git push origin v1.0.1
 ```
 
-Publishes the `ensure-running` package. Requires `npm login`.
+CI validates lint/tests/build, checks that the tag matches `package.json`, then runs `npm publish` with provenance.
+
+See [docs/PUBLISHING.md](./docs/PUBLISHING.md) for full setup, npm requirements, and troubleshooting.
+
+### Local publish (fallback)
+
+```bash
+npm run deploy
+```
+
+Requires `npm login`. Prefer tag-based CI releases.
 
 Requires Node.js >= 20.
 
@@ -321,6 +344,7 @@ Requires Node.js >= 20.
 
 | Document | Contents |
 |----------|----------|
+| [docs/PUBLISHING.md](./docs/PUBLISHING.md) | npm Trusted Publishing, tags, CI release flow |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Package layout, service contract, Docker internals, custom services |
 | [LICENSE](./LICENSE) | MIT |
 
