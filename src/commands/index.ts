@@ -1,5 +1,6 @@
 export {
     isDockerDaemonReachable,
+    parseDockerCliVersion,
     resolveDockerExecutable,
     runDockerDesktopStart,
     runDockerInfo,

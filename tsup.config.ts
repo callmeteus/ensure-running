@@ -1,16 +1,33 @@
 import { defineConfig } from "tsup";
 
-export default defineConfig({
-    entry: ["src/index.ts"],
-    format: ["esm", "cjs"],
-    dts: true,
+const sharedOptions = {
+    target: "node20" as const,
     sourcemap: true,
-    clean: true,
-    target: "node20",
     splitting: false,
-    outExtension({ format }) {
+    outExtension({ format }: { format: string }) {
         return {
             js: format === "cjs" ? ".cjs" : ".js"
         };
     }
-});
+};
+
+export default defineConfig([
+    {
+        ...sharedOptions,
+        entry: {
+            index: "src/index.ts"
+        },
+        format: ["esm", "cjs"],
+        dts: {
+            entry: ["src/index.ts"]
+        },
+        clean: true
+    },
+    {
+        ...sharedOptions,
+        entry: {
+            "bin/ensure-docker-running": "src/bin/ensure-docker-running.ts"
+        },
+        format: ["esm"]
+    }
+]);

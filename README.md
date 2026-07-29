@@ -1,31 +1,70 @@
+<div align="center">
+
 # ensure-docker-running
 
-Cross-platform helper that ensures the Docker CLI is installed, the daemon is running, and Docker is ready for use.
+> Cross-platform Docker readiness for Node.js CLIs and dev scripts
 
-## Overview
+**One call to detect the Docker CLI, auto-start the daemon when needed, and poll until `docker info` succeeds.**
 
-This package wraps installation checks, optional auto-start, and readiness polling behind a single call: `await ensureDockerRunning()`.
+[![npm version](https://img.shields.io/npm/v/ensure-docker-running.svg)](#)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-339933.svg)](#)
+[![TypeScript](https://img.shields.io/badge/Language-TypeScript-blue.svg)](#)
+[![Zero Dependencies](https://img.shields.io/badge/Dependencies-0-brightgreen.svg)](#)
+[![Vitest](https://img.shields.io/badge/Tested%20with-Vitest-green.svg)](#)
 
-**It does:**
+[Get Started](#get-started) • [Features](#features) • [CLI](#cli) • [API](#api) • [Architecture](#architecture) • [FAQ](#faq) • [Development](#development)
 
-- Detect whether Docker is installed and on PATH
-- Check daemon availability via `docker info`
-- Optionally start Docker (Linux service managers, Docker Desktop CLI, or OS-specific fallbacks)
-- Poll until the daemon responds or a timeout is reached
-- Expose typed errors for CLIs and libraries
+</div>
 
-**It does not:**
+---
 
-- Install Docker for you
-- Fix Linux permission issues (`docker` group membership)
-- Configure Docker contexts, Colima, or Rancher Desktop
-- Replace container orchestration or image management APIs
+## What Is ensure-docker-running?
+
+Node.js tools that depend on Docker must handle installation checks, daemon availability, auto-start, and readiness polling differently on Linux, Windows, and macOS. This package centralizes that behavior behind `await ensureDockerRunning()` and a matching CLI (`ensure-docker-running` / `edr`).
+
+It uses the Docker CLI only - no dockerode, no socket assumptions, zero runtime dependencies.
+
+```text
+  [ your CLI / script / test runner ]
+                  |
+                  v
+        ensureDockerRunning()
+                  |
+     +------------+------------+
+     |            |            |
+     v            v            v
+ detect       platforms      wait
+ (PATH +      (auto-start    (poll
+  docker       per OS)        docker info)
+  --version)
+```
+
+**Out of scope:** installing Docker, fixing Linux `docker` group permissions, configuring Colima/Rancher contexts, or replacing container APIs.
+
+---
+
+## Features
+
+- **Installation detection:** locates `docker` on PATH (`where.exe` / `which`) and validates with `docker --version` (daemon not required).
+- **Daemon checks:** primary signal is `docker info` exit 0.
+- **Auto-start:** Linux (`systemctl`, `service`, `dockerd`), Windows and macOS (Docker Desktop CLI and OS fallbacks).
+- **Readiness polling:** configurable timeout and interval until the daemon responds.
+- **Typed errors:** `NOT_INSTALLED`, `NOT_RUNNING`, `START_FAILED`, `TIMEOUT` for CLIs and libraries.
+- **CLI + library:** ESM and CJS builds, `ensure-docker-running` and `edr` bin aliases.
+- **Fully mockable:** unit tests mock `child_process` - no real Docker required in CI.
+
+---
 
 ## Get Started
+
+### Install
 
 ```bash
 npm install ensure-docker-running
 ```
+
+### Library
 
 ```typescript
 import { ensureDockerRunning } from "ensure-docker-running";
@@ -49,6 +88,43 @@ await ensureDockerRunning({
 });
 ```
 
+Non-throwing probe:
+
+```typescript
+import { isDockerRunning } from "ensure-docker-running";
+
+if (await isDockerRunning()) {
+    // daemon is reachable
+}
+```
+
+---
+
+## CLI
+
+After install, `ensure-docker-running` and the `edr` alias are linked on PATH (npm/yarn on Windows, Linux, and macOS):
+
+```bash
+ensure-docker-running
+edr --check
+ensure-docker-running --timeout 60000 --no-auto-start
+edr --help
+```
+
+| Flag | Description |
+|------|-------------|
+| `--check` | Exit 0 when the daemon is reachable; never auto-start |
+| `--timeout <ms>` | Max wait for readiness (default: `120000`) |
+| `--interval <ms>` | Poll interval (default: `1000`) |
+| `--no-auto-start` | Fail when the daemon is down |
+| `-q`, `--quiet` | Suppress progress output |
+| `-h`, `--help` | Show usage |
+| `-v`, `--version` | Print package version |
+
+Exit codes: `0` on success, `1` on failure (check mode returns `1` when the daemon is down).
+
+---
+
 ## API
 
 ### Exports
@@ -70,7 +146,7 @@ await ensureDockerRunning({
 | `autoStart` | `true` | Attempt to start Docker when daemon is down |
 | `logger` | none | Optional `{ info, warn, debug }` hooks |
 
-## Error handling
+### Error handling
 
 | Error | When | `code` |
 |-------|------|--------|
@@ -108,20 +184,31 @@ try {
 }
 ```
 
+---
+
 ## Architecture
+
+| Module | Responsibility |
+|--------|----------------|
+| `ensure/` | High-level orchestration (`ensureDockerRunning`, `isDockerRunning`) |
+| `detect/` | Installation + daemon detection |
+| `wait/` | Poll until daemon is ready |
+| `commands/` | `docker` CLI wrappers |
+| `platforms/` | OS-specific auto-start strategies |
+| `process/` | Detached spawn helpers |
+| `errors/` | Typed error hierarchy |
+| `cli/` | CLI argument parsing and exit codes |
 
 ```text
 ensureDockerRunning
-  -> detectDocker (which + docker version + docker info)
+  -> detectDocker (which/where + docker --version + docker info)
   -> if not running and autoStart: platforms.startDocker
   -> waitForDocker (poll docker info until timeout)
 ```
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for design decisions, platform start order, and test strategy.
 
-## CLI integration
-
-Pre-action hook with Commander:
+### Commander hook
 
 ```typescript
 import { Command } from "commander";
@@ -132,7 +219,7 @@ const program = new Command();
 program.hook("preAction", async () => {
     await ensureDockerRunning({
         logger: {
-            info: (message) => program.error(message, { exitCode: 0 })
+            info: (message) => console.log(message)
         }
     });
 });
@@ -143,6 +230,8 @@ program.command("build").action(async () => {
 
 program.parse();
 ```
+
+---
 
 ## FAQ
 
@@ -162,7 +251,15 @@ Works when `docker info` already succeeds in the same environment as your Node p
 
 If `docker info` fails with permission denied, add your user to the `docker` group or use `sudo`. This package does not change system permissions.
 
+**Why `docker --version` for install checks?**
+
+On Windows, `docker version --format` can exit non-zero when the daemon is stopped even though the CLI is installed. `docker --version` validates the binary without requiring a running daemon.
+
+---
+
 ## Development
+
+From `Pacotes/ensure-docker-running/`:
 
 ```bash
 npm ci
@@ -173,7 +270,42 @@ npm run build
 npm run test:coverage
 ```
 
+Run the CLI from TypeScript source (no build required):
+
+```bash
+yarn dev
+yarn dev --check
+yarn dev --help
+```
+
+Test the published bin names after build:
+
+```bash
+npm run build
+npm link
+edr --version
+ensure-docker-running --check
+```
+
+| Script | Purpose |
+|--------|---------|
+| `yarn dev` | Run CLI from source via `tsx` |
+| `npm start` | Run built CLI from `dist/` |
+| `npm run build` | Dual ESM/CJS library + ESM bin |
+| `npm run test:coverage` | Vitest with coverage thresholds |
+
 Requires Node.js >= 20.
+
+---
+
+## Documentation
+
+| Document | Contents |
+|----------|----------|
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Module graph, detection rules, platform start order, testing strategy |
+| [LICENSE](./LICENSE) | MIT |
+
+---
 
 ## License
 

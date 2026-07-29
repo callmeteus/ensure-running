@@ -31,8 +31,8 @@ describe("Ensure", () => {
                 if (cmd === "which") {
                     callback(null, "/usr/bin/docker\n", "");
                 } else
-                if (args.includes("{{.Client.Version}}")) {
-                    callback(null, "27.0.0", "");
+                if (args[0] === "--version") {
+                    callback(null, "Docker version 27.0.0, build abc", "");
                 } else
                 if (args[0] === "info") {
                     callback(null, "ok", "");
@@ -80,8 +80,8 @@ describe("Ensure", () => {
                 if (cmd === "which") {
                     callback(null, "/usr/bin/docker\n", "");
                 } else
-                if (args.includes("{{.Client.Version}}")) {
-                    callback(null, "27.0.0", "");
+                if (args[0] === "--version") {
+                    callback(null, "Docker version 27.0.0, build abc", "");
                 } else
                 if (args[0] === "info") {
                     callback(new Error("down"));
@@ -115,8 +115,8 @@ describe("Ensure", () => {
                 if (cmd === "which") {
                     callback(null, "/usr/bin/docker\n", "");
                 } else
-                if (args.includes("{{.Client.Version}}")) {
-                    callback(null, "27.0.0", "");
+                if (args[0] === "--version") {
+                    callback(null, "Docker version 27.0.0, build abc", "");
                 } else
                 if (args[0] === "info") {
                     infoCalls += 1;
@@ -151,8 +151,8 @@ describe("Ensure", () => {
                 if (cmd === "which") {
                     callback(null, "/usr/bin/docker\n", "");
                 } else
-                if (args.includes("{{.Client.Version}}")) {
-                    callback(null, "27.0.0", "");
+                if (args[0] === "--version") {
+                    callback(null, "Docker version 27.0.0, build abc", "");
                 } else
                 if (args[0] === "info") {
                     callback(null, "ok", "");
@@ -198,8 +198,8 @@ describe("Ensure", () => {
                 if (cmd === "which") {
                     callback(null, "/usr/bin/docker\n", "");
                 } else
-                if (args.includes("{{.Client.Version}}")) {
-                    callback(null, "27.0.0", "");
+                if (args[0] === "--version") {
+                    callback(null, "Docker version 27.0.0, build abc", "");
                 } else
                 if (args[0] === "info") {
                     callback(new Error("down"));
@@ -229,8 +229,8 @@ describe("Ensure", () => {
                 if (cmd === "which") {
                     callback(null, "/usr/bin/docker\n", "");
                 } else
-                if (args.includes("{{.Client.Version}}")) {
-                    callback(null, "27.0.0", "");
+                if (args[0] === "--version") {
+                    callback(null, "Docker version 27.0.0, build abc", "");
                 } else
                 if (args[0] === "info") {
                     callback(new Error("down"));

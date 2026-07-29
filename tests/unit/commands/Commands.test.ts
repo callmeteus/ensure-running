@@ -78,8 +78,8 @@ describe("Commands", () => {
                 _opts: unknown,
                 callback: (err: null, stdout: string, stderr: string) => void
             ) => {
-                if (args.includes("{{.Client.Version}}")) {
-                    callback(null, "27.0.0", "");
+                if (args[0] === "--version") {
+                    callback(null, "Docker version 27.0.0, build abc", "");
                 } else
                 if (args.includes("{{.Server.Version}}")) {
                     callback(null, "27.0.0", "");
@@ -111,6 +111,25 @@ describe("Commands", () => {
         const { runDockerInfo } = await import( "../../../src/commands");
 
         await expect(runDockerInfo("docker")).resolves.toBe("daemon-info");
+    });
+
+    it("validateDockerInstallation returns true when docker --version succeeds", async () => {
+        execFileMock.mockImplementation(
+            (
+                _cmd: string,
+                args: string[],
+                _opts: unknown,
+                callback: (err: null, stdout: string, stderr: string) => void
+            ) => {
+                if (args[0] === "--version") {
+                    callback(null, "Docker version 27.0.0, build abc", "");
+                }
+            }
+        );
+
+        const { validateDockerInstallation } = await import("../../../src/commands");
+
+        await expect(validateDockerInstallation("docker")).resolves.toBe(true);
     });
 
     it("validateDockerInstallation returns false on failure", async () => {
@@ -156,8 +175,8 @@ describe("Commands", () => {
                 _opts: unknown,
                 callback: (err: Error | null, stdout?: string, stderr?: string) => void
             ) => {
-                if (args.includes("{{.Client.Version}}")) {
-                    callback(null, "27.0.0", "");
+                if (args[0] === "--version") {
+                    callback(null, "Docker version 27.0.0, build abc", "");
                 } else
                 if (args.includes("{{.Server.Version}}")) {
                     callback(new Error("daemon down"));

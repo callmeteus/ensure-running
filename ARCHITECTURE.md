@@ -26,6 +26,7 @@ commands/             docker CLI wrappers
 platforms/            OS-specific auto-start
 process/              detached spawn helpers
 logger/               optional injected logging
+cli/                  CLI argument parsing and exit codes
 errors/               typed error hierarchy
 types/                shared interfaces and defaults
 utils/                exec, spawn, poll, which, sleep, retry, timeout
@@ -51,8 +52,8 @@ The root of `src/` contains only `index.ts`. Implementation files live in subfol
 
 | Platform | Locate binary | Validate |
 |----------|---------------|----------|
-| Windows | `where.exe docker` | `docker version` exit 0 |
-| Linux/macOS | `which docker`, fallback `command -v docker` | `docker version` exit 0 |
+| Windows | `where.exe docker` | `docker --version` exit 0 |
+| Linux/macOS | `which docker`, fallback `command -v docker` | `docker --version` exit 0 |
 
 The first path returned is stored as `executable` in `DockerDetectionResult`.
 

@@ -1,5 +1,18 @@
 import { exec, which } from "../utils";
 
+const DockerCliVersionPattern = /Docker version\s+([^\s,]+)/i;
+
+/**
+ * Parses `docker --version` stdout into a semver-like client version string.
+ *
+ * @param stdout Raw stdout from `docker --version`.
+ */
+export function parseDockerCliVersion(stdout: string): string | undefined {
+    const match = stdout.match(DockerCliVersionPattern);
+
+    return match?.[1];
+}
+
 /**
  * Resolves the docker executable path, falling back to `docker` on PATH.
  */
@@ -47,26 +60,33 @@ export interface DockerVersionInfo {
  * @param executable Docker CLI path or name.
  */
 export async function runDockerVersion(executable = "docker"): Promise<DockerVersionInfo> {
+    let clientVersion: string | undefined;
+
     try {
-        const result = await exec(executable, ["version", "--format", "{{.Client.Version}}"]);
-        const clientVersion = result.stdout.trim() || undefined;
-        let serverReachable = false;
-
-        try {
-            const serverResult = await exec(executable, [
-                "version",
-                "--format",
-                "{{.Server.Version}}"
-            ]);
-            serverReachable = serverResult.stdout.trim().length > 0;
-        } catch {
-            serverReachable = false;
-        }
-
-        return { clientVersion, serverReachable };
+        const result = await exec(executable, ["--version"]);
+        clientVersion = parseDockerCliVersion(result.stdout);
     } catch {
         return { serverReachable: false };
     }
+
+    if (clientVersion === undefined) {
+        return { serverReachable: false };
+    }
+
+    let serverReachable = false;
+
+    try {
+        const serverResult = await exec(executable, [
+            "version",
+            "--format",
+            "{{.Server.Version}}"
+        ]);
+        serverReachable = serverResult.stdout.trim().length > 0;
+    } catch {
+        serverReachable = false;
+    }
+
+    return { clientVersion, serverReachable };
 }
 
 /**
@@ -76,9 +96,9 @@ export async function runDockerVersion(executable = "docker"): Promise<DockerVer
  */
 export async function validateDockerInstallation(executable: string): Promise<boolean> {
     try {
-        await exec(executable, ["version", "--format", "{{.Client.Version}}"]);
+        const result = await exec(executable, ["--version"]);
 
-        return true;
+        return parseDockerCliVersion(result.stdout) !== undefined;
     } catch {
         return false;
     }
