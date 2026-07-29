@@ -4,16 +4,16 @@
 
 > Chainable CLI to ensure local services are ready before running commands
 
-**`er docker postgres -- vite dev` - ensure providers, then run your script.**
+**`er docker postgres -- vite dev` - ensure services, then run your script.**
 
 [![npm version](https://img.shields.io/npm/v/ensure-running.svg)](#)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D20-339933.svg)](#)
 [![TypeScript](https://img.shields.io/badge/Language-TypeScript-blue.svg)](#)
-[![Zero Runtime Dependencies](https://img.shields.io/badge/Runtime%20Deps-0-brightgreen.svg)](#)
+[![Runtime Dependencies](https://img.shields.io/badge/Runtime%20Deps-jiti-brightgreen.svg)](#)
 [![Vitest](https://img.shields.io/badge/Tested%20with-Vitest-green.svg)](#)
 
-[Get Started](#get-started) • [Features](#features) • [CLI](#cli) • [Packages](#packages) • [Development](#development)
+[Get Started](#get-started) • [Features](#features) • [CLI](#cli) • [Services](#services) • [Development](#development)
 
 </div>
 
@@ -21,7 +21,7 @@
 
 ## What Is ensure-running?
 
-`ensure-running` is a small monorepo and CLI for **chaining readiness checks** before a command runs. Instead of one-off shell scripts per service, you compose providers on the command line or in `package.json` scripts.
+`ensure-running` is a CLI and library for **chaining readiness checks** before a command runs. Instead of one-off shell scripts per dependency, you compose services on the command line or in `package.json` scripts.
 
 ```text
   package.json script
@@ -33,25 +33,25 @@
     |         |
     v         v
  docker     postgres
- provider   provider (future)
+ (built-in) (.er/services)
     |         |
     +----+----+
          v
     vite dev (spawned with inherited stdio)
 ```
 
-The first provider is **Docker** (`@ensure-running/docker`). More providers (Postgres, Redis, etc.) can be added as separate workspace packages.
+The first built-in service is **Docker**. More built-ins (Postgres, Redis, etc.) can be added under `src/services/`. Projects can also define custom services in `.er/services/`.
 
 ---
 
 ## Features
 
-- **Chainable CLI:** `er docker`, `er docker -- vite dev`, `er docker postgres -- npm test` (future providers).
-- **Docker provider:** install detection via `docker --version`, daemon checks via `docker info`, cross-platform auto-start.
-- **Library API:** import `@ensure-running/docker` directly for programmatic use.
-- **Provider registry:** extensible core (`@ensure-running/core`) with parse/run contracts.
+- **Chainable CLI:** `er docker`, `er docker -- vite dev`, `er docker postgres -- npm test`.
+- **Docker service:** install detection via `docker --version`, daemon checks via `docker info`, cross-platform auto-start.
+- **Custom services:** drop files in `.er/services/` with `export default defineEnsureService({ ... })`.
+- **Library API:** `ensureRunning`, `ensureDocker`, `ensureDockerRunning`, and typed Docker errors from one package.
+- **Service registry:** extensible core with parse/run contracts.
 - **package.json friendly:** one command prefix instead of nested shell scripts.
-- **Zero runtime dependencies:** Node.js built-ins only in published packages.
 - **Fully tested:** mocked `child_process` in unit tests - no real Docker required in CI.
 
 ---
@@ -78,9 +78,43 @@ ensure-running docker --timeout 60000 -- npm test
 | `er docker` | Ensure Docker is installed, started, and ready |
 | `er docker --check` | Exit 0 only when the daemon responds; never auto-start |
 | `er docker -- vite dev` | Ensure Docker, then run `vite dev` |
-| `er docker postgres -- npm test` | Chain providers, then run command (postgres = future) |
+| `er docker postgres -- npm test` | Chain services, then run command (postgres = custom or future built-in) |
 
 `--` is **required** before the command. Without it, `er docker vite dev` is an error.
+
+### Custom services (`.er/services`)
+
+Create project-local services that the CLI discovers automatically:
+
+```text
+.er/
+  services/
+    postgres.ts
+```
+
+```typescript
+import { defineEnsureService } from "ensure-running";
+
+export default defineEnsureService({
+    id: "postgres",
+    parseArgs(argv) {
+        return { options: {}, remaining: argv };
+    },
+    async run() {
+        // wait for postgres, return 0 or 1
+        return 0;
+    },
+    printHelp() {
+        console.log("postgres - ensure local Postgres is ready");
+    }
+});
+```
+
+Then chain it like a built-in service:
+
+```bash
+er docker postgres -- npm run migrate
+```
 
 ### package.json
 
@@ -94,7 +128,7 @@ ensure-running docker --timeout 60000 -- npm test
 }
 ```
 
-Use `--` to separate providers from the command. It is required when running a trailing command.
+Use `--` to separate services from the command. It is required when running a trailing command.
 
 ### API
 
@@ -106,18 +140,18 @@ import {
     ensure
 } from "ensure-running";
 
-// Chain providers (same model as the CLI)
+// Chain services (same model as the CLI)
 await ensureRunning(["docker"]);
 
 await ensureRunning({
-    providers: [
-        { provider: "docker", options: { timeout: 60_000 } }
+    services: [
+        { service: "docker", options: { timeout: 60_000 } }
     ]
 });
 
 // Ensure, then spawn a command (like `er docker -- vite dev`)
 const exitCode = await runEnsureRunning({
-    providers: ["docker"],
+    services: ["docker"],
     command: ["vite", "dev"]
 });
 
@@ -125,16 +159,16 @@ const exitCode = await runEnsureRunning({
 await ensureDocker();
 await ensure.docker({ check: true });
 
-// Low-level docker package (also re-exported from ensure-running)
+// Low-level docker helpers (re-exported from ensure-running)
 import { ensureDockerRunning, detectDocker } from "ensure-running";
 await ensureDockerRunning({ autoStart: true });
 ```
 
 | API | Description |
 |-----|-------------|
-| `ensureRunning(providers)` | Ensure one or more providers; throws `EnsureRunningError` |
-| `ensureRunning({ providers, command? })` | Same, with optional structured request |
-| `runEnsureRunning({ providers, command? })` | Ensure providers, then spawn `command`; returns exit code |
+| `ensureRunning(services)` | Ensure one or more services; throws `EnsureRunningError` |
+| `ensureRunning({ services, command? })` | Same, with optional structured request |
+| `runEnsureRunning({ services, command? })` | Ensure services, then spawn `command`; returns exit code |
 | `ensureDocker(options?)` | Docker-only helper; throws `DockerError` subclasses |
 | `ensure.docker()` / `ensure.running()` | Namespaced aliases |
 
@@ -148,9 +182,9 @@ await ensureDockerRunning({ autoStart: true });
 |------|-------------|
 | `-h`, `--help` | Show top-level help |
 | `-v`, `--version` | Print CLI version |
-| `er docker --help` | Docker provider help |
+| `er docker --help` | Docker service help |
 
-### Docker provider flags
+### Docker service flags
 
 | Flag | Description |
 |------|-------------|
@@ -169,34 +203,33 @@ await ensureDockerRunning({ autoStart: true });
 
 ---
 
-## Packages
+## Services
 
-| Package | npm name | Description |
-|---------|----------|-------------|
-| `packages/cli` | `ensure-running` | CLI (`er`) + programmatic API |
-| `packages/docker` | `@ensure-running/docker` | Docker detection, auto-start, polling, typed errors |
-| `packages/core` | `@ensure-running/core` | Provider registry, argv parsing, chaining runner |
+Built-in services ship inside `ensure-running`. Custom services live in `.er/services/`.
 
-### ensure-running exports
+| Service | Source | Description |
+|---------|--------|-------------|
+| `docker` | built-in (`src/services/docker`) | Docker detection, auto-start, polling, typed errors |
+| `*` | `.er/services/*` | Project-local `export default` services |
+
+### Public exports
 
 | Export | Description |
 |--------|-------------|
-| `ensureRunning(providers)` | Chain providers programmatically |
-| `runEnsureRunning(request)` | Ensure providers, then run a command |
+| `ensureRunning(services)` | Chain services programmatically |
+| `runEnsureRunning(request)` | Ensure services, then run a command |
 | `ensureDocker(options?)` | Docker shorthand with typed errors |
 | `ensure` | `{ docker, running }` namespace |
 | `runCli(argv)` | Programmatic CLI entry (returns exit code) |
-| `createDefaultRegistry()` | Built-in provider registry |
-| `EnsureRunningError` | Provider failure with `providerId` and `exitCode` |
-
-### Docker library exports
-
-| Export | Description |
-|--------|-------------|
-| `ensureDockerRunning(options?)` | Full install + daemon + readiness flow |
+| `createServiceRegistry()` | Built-in + `.er/services` registry |
+| `createBuiltInServiceRegistry()` | Built-in services only |
+| `defineEnsureService(service)` | Define a custom or built-in service with type checking |
+| `EnsureService` | Service contract type |
+| `EnsureRunningError` | Service failure with `serviceId` and `exitCode` |
+| `ensureDockerRunning(options?)` | Full Docker install + daemon + readiness flow |
 | `isDockerRunning()` | Returns `true` when daemon is reachable; never throws |
 | `detectDocker()` | `{ installed, running, version?, executable? }` |
-| `dockerProvider` | CLI provider object for custom registries |
+| `dockerService` | CLI service object for custom registries |
 | `DockerError` subclasses | Typed errors with stable `code` values |
 
 ---
@@ -204,15 +237,15 @@ await ensureDockerRunning({ autoStart: true });
 ## Architecture
 
 ```text
-packages/cli
-  -> @ensure-running/core (parseInvocation, runInvocation)
-  -> @ensure-running/docker (dockerProvider)
-
-packages/docker
-  -> ensure / detect / wait / platforms / commands / utils
+src/
+  cli/       -> core (parseInvocation) + services (registry)
+  api/       -> core + services/docker
+  services/
+    docker/  -> ensure / detect / wait / platforms / commands / utils
+    LoadCustomServices.ts  -> .er/services/*
 ```
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for module graphs, platform start order, and how to add a new provider package.
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for module graphs, platform start order, and how to add services.
 
 ---
 
@@ -220,7 +253,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for module graphs, platform start order
 
 **How is this different from `ensure-docker-running`?**
 
-This repo is the multi-provider evolution. Docker logic lives in `@ensure-running/docker`. The CLI is `ensure-running` / `er` with subcommands per provider.
+This repo ships Docker as a built-in service. The CLI is `ensure-running` / `er` with service names as the first tokens.
 
 **Does `er docker -- vite` run vite on PATH?**
 
@@ -261,15 +294,24 @@ Link the published bins:
 
 ```bash
 npm run build
-npm link -w ensure-running
+npm link
 er docker --version
 ```
 
 | Script | Purpose |
 |--------|---------|
 | `yarn dev docker ...` | Run CLI via `tsx` without building |
-| `npm run build` | Build core, docker, and cli packages |
-| `npm test` | Vitest across all workspace packages |
+| `npm run build` | Build library + bin |
+| `npm test` | Vitest unit tests |
+| `yarn deploy` | Lint, test, build, then `npm publish` |
+
+### Publish
+
+```bash
+yarn deploy
+```
+
+Publishes the `ensure-running` package. Requires `npm login`.
 
 Requires Node.js >= 20.
 
@@ -279,7 +321,7 @@ Requires Node.js >= 20.
 
 | Document | Contents |
 |----------|----------|
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | Monorepo layout, provider contract, Docker internals |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Package layout, service contract, Docker internals, custom services |
 | [LICENSE](./LICENSE) | MIT |
 
 ---

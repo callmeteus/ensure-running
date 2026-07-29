@@ -2,49 +2,61 @@
 
 ## Goal
 
-`ensure-running` is a chainable CLI and provider monorepo. Each provider package owns one local dependency (Docker today, Postgres/Redis later). The CLI parses provider names, runs them in order, then optionally spawns a trailing command.
+`ensure-running` is a single npm package with a chainable CLI. Built-in **services** (Docker today, Postgres/Redis later) live under `src/services/`. Projects can add custom services in `.er/services/`.
 
-## Monorepo layout
-
-```text
-packages/
-  core/     @ensure-running/core   registry, argv parsing, chaining runner
-  docker/   @ensure-running/docker Docker detection, auto-start, polling, library API
-  cli/      ensure-running         bins: er, ensure-running
-```
-
-Import graph:
+## Package layout
 
 ```text
-packages/cli
-  -> @ensure-running/core
-  -> @ensure-running/docker
-
-packages/docker
-  -> @ensure-running/core (provider types only)
-
-packages/core
-  (no workspace runtime deps)
+src/
+  bin/              er / ensure-running entry
+  cli/              argv routing, help, runCli
+  api/              ensureRunning, ensureDocker, runEnsureRunning
+  core/             ServiceRegistry, argv parsing, chaining runner
+  services/
+    docker/         built-in Docker service + library
+    CreateServiceRegistry.ts
+    LoadCustomServices.ts
+    AssertEnsureService.ts
 ```
 
-## Provider contract
+## Service contract
 
-Each provider implements `EnsureProvider` from `@ensure-running/core`:
+Each service implements `EnsureService`:
 
-| Method | Responsibility |
-|--------|----------------|
+| Field / method | Responsibility |
+|----------------|----------------|
 | `id` | CLI token (`docker`) |
 | `aliases?` | Short names (`d`) |
-| `parseArgs(argv)` | Consume provider flags; return `{ options, remaining }` |
+| `parseArgs(argv)` | Consume service flags; stop at `--` or next service token; return `{ options, remaining }` |
 | `run(options)` | Ensure/check flow; return process exit code |
-| `printHelp?()` | Provider-specific help |
+| `printHelp?()` | Service-specific help |
 
-The CLI uses `parseInvocation()` to:
+Custom services in `.er/services/` should use `export default defineEnsureService({ ... })`.
 
-1. Read consecutive provider tokens from argv.
-2. Let each provider consume its own flags.
+```typescript
+import { defineEnsureService } from "ensure-running";
+
+export default defineEnsureService({
+    id: "postgres",
+    parseArgs(argv) {
+        return { options: {}, remaining: argv };
+    },
+    async run() {
+        return 0;
+    }
+});
+```
+
+The CLI loads `.er/services/*.{js,mjs,cjs,ts}` from the nearest directory walking up from `cwd`. TypeScript files are loaded via `jiti`.
+
+## CLI flow
+
+`parseInvocation()`:
+
+1. Read consecutive service tokens from argv.
+2. Let each service consume its own flags (until `--` or a non-flag token).
 3. Require `--` before the trailing command (`vite dev`, `npm test`, etc.).
-4. Spawn the command after all providers succeed.
+4. Spawn the command after all services succeed.
 
 ## Chaining examples
 
@@ -56,21 +68,20 @@ er docker postgres -- vite dev
 
 `--` is required before the command. Without it, trailing tokens throw `CommandSeparatorError`.
 
-## Docker package
-
-Barrel-only `src/` root (`index.ts` only at package root). Internal modules:
+## Docker service
 
 ```text
-ensure/     orchestration (ensureDockerRunning, isDockerRunning)
-detect/     installation + daemon detection
-wait/       poll until docker info succeeds
-commands/   docker CLI wrappers
-platforms/  OS-specific auto-start
-process/    detached spawn helpers
-provider/   dockerProvider for ensure-running CLI
-errors/     typed error hierarchy
-types/      shared interfaces and defaults
-utils/      exec, spawn, poll, which, sleep, retry, timeout
+src/services/docker/
+  ensure/     orchestration (ensureDockerRunning, isDockerRunning)
+  detect/     installation + daemon detection
+  wait/       poll until docker info succeeds
+  commands/   docker CLI wrappers
+  platforms/  OS-specific auto-start
+  process/    detached spawn helpers
+  service/    dockerService for the CLI
+  errors/     typed error hierarchy
+  types/      shared interfaces and defaults
+  utils/      exec, spawn, poll, which, sleep, retry, timeout
 ```
 
 ### Installation detection
@@ -78,50 +89,36 @@ utils/      exec, spawn, poll, which, sleep, retry, timeout
 | Platform | Locate binary | Validate |
 |----------|---------------|----------|
 | Windows | `where.exe docker` | `docker --version` exit 0 |
-| Linux/macOS | `which docker`, fallback `command -v docker` | `docker --version` exit 0 |
+| Unix | `which docker` | `docker --version` exit 0 |
 
-`docker --version` is used instead of `docker version --format` because the latter can exit non-zero on Windows when the daemon is stopped even though the CLI is installed.
+Daemon reachability uses `docker info`, not `docker version --format` (Windows returns exit 0 for client-only when daemon is down).
 
-### Daemon detection
+### Auto-start order
 
-1. `docker info` exit 0 means reachable.
-2. Optional `docker version` server format as secondary signal inside `runDockerVersion`.
+| OS | Strategy |
+|----|----------|
+| macOS | Open Docker Desktop |
+| Windows | Start Docker Desktop via known install paths |
+| Linux | `systemctl start docker` or `service docker start`, then detached `dockerd` as fallback |
 
-### Auto-start by platform
+## Adding a built-in service
 
-| OS | Attempt order |
-|----|---------------|
-| Linux | `systemctl start docker` -> `service docker start` -> detached `dockerd` |
-| Windows | `docker desktop start` -> launch Docker Desktop executable |
-| macOS | `docker desktop start` -> `open -a Docker` |
+1. Create `src/services/<name>/` with domain logic and a `service/<Name>Service.ts` exporting `<name>Service`.
+2. Register it in `createBuiltInServiceRegistry()`.
+3. Extend `EnsureRunning.ts` if the programmatic API needs typed options for that service.
 
-## Build outputs
+## Adding a project-local service
 
-| Package | Formats | Entry |
-|---------|---------|-------|
-| `@ensure-running/core` | ESM + CJS + types | `dist/index.js` |
-| `@ensure-running/docker` | ESM + CJS + types | `dist/index.js` |
-| `ensure-running` | ESM bin only | `dist/bin/ensure-running.js` |
+1. Create `.er/services/my-service.ts` (or `.js`).
+2. `export default defineEnsureService({ id, parseArgs, run, printHelp? })`.
+3. Run `er my-service -- your-command`.
 
-The CLI bundle inlines workspace packages via `tsup` `noExternal`.
+Custom service ids override built-ins when registered later (same id replaces the previous entry in the registry map).
 
-## Adding a new provider
+## Dependencies
 
-1. Create `packages/<name>/` with `EnsureProvider` implementation.
-2. Register it in `packages/cli/src/cli/Cli.ts` (`createDefaultRegistry`).
-3. Add the workspace dependency to `packages/cli/package.json`.
-4. Document provider flags in the root README.
+| Package | Why |
+|---------|-----|
+| `jiti` | Load TypeScript custom services from `.er/services` at runtime |
 
-## Testing strategy
-
-- Unit tests live under `packages/*/tests/`.
-- Docker tests mock `child_process` - no real Docker in CI.
-- Core tests cover registry parsing, chaining, and argv normalization.
-- Root `vitest.config.ts` aliases workspace packages to `src/` during tests.
-
-## Why CLI instead of dockerode
-
-- Zero runtime dependencies.
-- Works with any Docker CLI backend (Engine, Desktop, Colima, Rancher Desktop).
-- Same surface users already use (`docker info`).
-- Install and auto-start concerns stay in one place.
+Everything else uses Node.js built-ins.

@@ -1,25 +1,47 @@
 {
-    "name": "ensure-running-workspace",
-    "private": true,
+    "name": "ensure-running",
     "version": "1.0.0",
-    "type": "module",
-    "description": "Chainable CLI to ensure local services are ready before running commands",
+    "description": "Chainable CLI and API to ensure local services are ready before running commands",
     "license": "MIT",
-    "workspaces": [
-        "packages/*"
+    "type": "module",
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": {
+                "types": "./dist/index.d.ts",
+                "default": "./dist/index.js"
+            },
+            "require": {
+                "types": "./dist/index.d.cts",
+                "default": "./dist/index.cjs"
+            }
+        }
+    },
+    "bin": {
+        "ensure-running": "./dist/bin/ensure-running.js",
+        "er": "./dist/bin/ensure-running.js"
+    },
+    "files": [
+        "dist"
     ],
     "engines": {
         "node": ">=20"
     },
     "scripts": {
-        "build": "npm run build -w @ensure-running/core && npm run build -w @ensure-running/docker && npm run build -w ensure-running",
-        "dev": "tsx packages/cli/src/bin/ensure-running.ts",
-        "start": "node packages/cli/dist/bin/ensure-running.js",
+        "build": "tsup",
+        "dev": "tsx src/bin/ensure-running.ts",
+        "start": "node dist/bin/ensure-running.js",
         "test": "vitest run",
         "test:coverage": "vitest run --coverage",
-        "lint": "eslint packages --max-warnings=0",
-        "typecheck": "npm run typecheck -w @ensure-running/core && npm run typecheck -w @ensure-running/docker && npm run typecheck -w ensure-running",
-        "prepublishOnly": "npm run lint && npm run typecheck && npm run test:coverage && npm run build"
+        "lint": "eslint src tests --max-warnings=0",
+        "typecheck": "tsc --noEmit",
+        "prepublishOnly": "npm run lint && npm run typecheck && npm run test:coverage && npm run build",
+        "deploy": "npm run prepublishOnly && npm publish"
+    },
+    "dependencies": {
+        "jiti": "^2.4.2"
     },
     "devDependencies": {
         "@eslint/js": "^9.18.0",
