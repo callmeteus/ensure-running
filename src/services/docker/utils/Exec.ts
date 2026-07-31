@@ -9,20 +9,33 @@ export interface ExecResult {
 }
 
 /**
+ * Optional execution environment overrides.
+ */
+export interface ExecOptions {
+    env?: NodeJS.ProcessEnv;
+}
+
+/**
  * Runs a command and returns stdout/stderr on success.
  *
  * @param command Executable name or path.
  * @param args Command arguments.
+ * @param options Optional environment overrides.
  * @returns Captured stdout and stderr.
  */
-export async function exec(command: string, args: string[] = []): Promise<ExecResult> {
+export async function exec(
+    command: string,
+    args: string[] = [],
+    options?: ExecOptions
+): Promise<ExecResult> {
     return new Promise((resolve, reject) => {
         nodeExecFile(
             command,
             args,
             {
                 encoding: "utf8",
-                windowsHide: true
+                windowsHide: true,
+                env: options?.env ?? process.env
             },
             (err, stdout, stderr) => {
                 if (err) {

@@ -10,9 +10,15 @@ export async function which(command: string): Promise<string | undefined> {
     try {
         if (process.platform === "win32") {
             const result = await exec("where.exe", [command]);
-            const firstLine = result.stdout.split(/\r?\n/).find((line) => line.trim().length > 0);
+            const lines = result.stdout
+                .split(/\r?\n/)
+                .map((line) => line.trim())
+                .filter((line) => line.length > 0);
+            const preferred = lines.find((line) => /docker\.exe$/i.test(line))
+                ?? lines.find((line) => !/\.cmd$/i.test(line))
+                ?? lines[0];
 
-            return firstLine?.trim();
+            return preferred;
         }
 
         try {

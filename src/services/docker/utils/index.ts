@@ -1,5 +1,5 @@
 export { exec, execShell } from "./Exec";
-export type { ExecResult } from "./Exec";
+export type { ExecOptions, ExecResult } from "./Exec";
 export { spawn, spawnDetached } from "./Spawn";
 export type { SpawnDetachedOptions } from "./Spawn";
 export { sleep } from "./Sleep";

@@ -91,11 +91,17 @@ describe("Platforms Windows", () => {
     it("uses docker desktop start when available", async () => {
         execFileMock.mockImplementation(
             (
-                _cmd: string,
+                cmd: string,
                 args: string[],
                 _opts: unknown,
                 callback: (err: null, stdout: string, stderr: string) => void
             ) => {
+                if (cmd === "tasklist") {
+                    callback(null, "INFO: No tasks are running which match the specified criteria.\r\n", "");
+
+                    return;
+                }
+
                 expect(args).toEqual(["desktop", "start"]);
                 callback(null, "", "");
             }
@@ -109,6 +115,74 @@ describe("Platforms Windows", () => {
         expect(logger.info).toHaveBeenCalledWith("Started Docker Desktop via CLI.");
     });
 
+    it("waits when the Docker Desktop backend is already running", async () => {
+        execFileMock.mockImplementation(
+            (
+                cmd: string,
+                args: string[],
+                _opts: unknown,
+                callback: (err: null, stdout: string, stderr: string) => void
+            ) => {
+                if (cmd === "tasklist" && args.some((arg) => arg.includes("com.docker.backend.exe"))) {
+                    callback(null, "com.docker.backend.exe           12345 Console                    1    123,456 K\r\n", "");
+
+                    return;
+                }
+
+                if (cmd === "tasklist") {
+                    callback(null, "INFO: No tasks are running which match the specified criteria.\r\n", "");
+                }
+            }
+        );
+
+        const { startDockerWindows } = await import( "../../../src/services/docker/platforms");
+        const logger = { info: vi.fn(), warn: vi.fn(), debug: vi.fn() };
+
+        await startDockerWindows(logger);
+
+        expect(logger.info).toHaveBeenCalledWith(
+            "Docker Desktop backend is already running. Waiting for the engine to become ready..."
+        );
+    });
+
+    it("waits when the Docker Desktop UI is open without the backend", async () => {
+        execFileMock.mockImplementation(
+            (
+                cmd: string,
+                args: string[],
+                _opts: unknown,
+                callback: (err: null, stdout: string, stderr: string) => void
+            ) => {
+                if (cmd === "tasklist" && args.some((arg) => arg.includes("com.docker.backend.exe"))) {
+                    callback(null, "INFO: No tasks are running which match the specified criteria.\r\n", "");
+
+                    return;
+                }
+
+                if (cmd === "tasklist" && args.some((arg) => arg.includes("Docker Desktop.exe"))) {
+                    callback(null, "Docker Desktop.exe           12345 Console                    1    123,456 K\r\n", "");
+
+                    return;
+                }
+            }
+        );
+
+        const { startDockerWindows } = await import( "../../../src/services/docker/platforms");
+        const logger = { info: vi.fn(), warn: vi.fn(), debug: vi.fn() };
+
+        await startDockerWindows(logger);
+
+        expect(logger.warn).toHaveBeenCalledWith(
+            "Docker Desktop is open but the engine backend is not running. Waiting for the engine to become ready..."
+        );
+        expect(execFileMock).not.toHaveBeenCalledWith(
+            "docker",
+            ["desktop", "restart"],
+            expect.anything(),
+            expect.anything()
+        );
+    });
+
     it("launches Docker Desktop.exe when CLI start fails", async () => {
         execFileMock.mockImplementation(
             (
@@ -117,6 +191,12 @@ describe("Platforms Windows", () => {
                 _opts: unknown,
                 callback: (err: Error | null, stdout?: string, stderr?: string) => void
             ) => {
+                if (cmd === "tasklist") {
+                    callback(null, "INFO: No tasks are running which match the specified criteria.\r\n", "");
+
+                    return;
+                }
+
                 if (cmd === "docker" && args[0] === "desktop") {
                     callback(new Error("cli missing"));
                 } else
@@ -352,11 +432,17 @@ describe("Platforms dispatch", () => {
 
         execFileMock.mockImplementation(
             (
-                _cmd: string,
+                cmd: string,
                 args: string[],
                 _opts: unknown,
                 callback: (err: null, stdout: string, stderr: string) => void
             ) => {
+                if (cmd === "tasklist") {
+                    callback(null, "INFO: No tasks are running which match the specified criteria.\r\n", "");
+
+                    return;
+                }
+
                 expect(args).toEqual(["desktop", "start"]);
                 callback(null, "", "");
             }

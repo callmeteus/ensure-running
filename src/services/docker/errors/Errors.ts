@@ -60,8 +60,11 @@ export class DockerStartError extends DockerError {
 export class DockerTimeoutError extends DockerError {
     constructor(timeoutMs: number) {
         const seconds = Math.round(timeoutMs / 1000);
+        const windowsHint = process.platform === "win32"
+            ? " If Docker Desktop is open but the engine never becomes ready, quit Docker Desktop completely and run `docker desktop start`, or restart it from the tray menu."
+            : "";
         super(
-            `Timed out after ${seconds}s waiting for the Docker daemon to become ready.`,
+            `Timed out after ${seconds}s waiting for the Docker daemon to become ready.${windowsHint}`,
             DockerErrorCode.TIMEOUT
         );
         this.name = "DockerTimeoutError";

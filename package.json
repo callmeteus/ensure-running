@@ -1,6 +1,6 @@
 {
     "name": "ensure-running",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Chainable CLI and API to ensure local services are ready before running commands",
     "license": "MIT",
     "repository": {

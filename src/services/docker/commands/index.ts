@@ -1,4 +1,5 @@
 export {
+    describeDockerDaemonProbe,
     isDockerDaemonReachable,
     parseDockerCliVersion,
     resolveDockerExecutable,

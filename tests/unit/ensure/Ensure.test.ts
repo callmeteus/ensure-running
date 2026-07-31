@@ -34,10 +34,7 @@ describe("Ensure", () => {
                 if (args[0] === "--version") {
                     callback(null, "Docker version 27.0.0, build abc", "");
                 } else
-                if (args[0] === "info") {
-                    callback(null, "ok", "");
-                } else
-                if (args.includes("{{.Server.Version}}")) {
+                if (args[0] === "ps") {
                     callback(null, "27.0.0", "");
                 }
             }
@@ -83,10 +80,7 @@ describe("Ensure", () => {
                 if (args[0] === "--version") {
                     callback(null, "Docker version 27.0.0, build abc", "");
                 } else
-                if (args[0] === "info") {
-                    callback(new Error("down"));
-                } else
-                if (args.includes("{{.Server.Version}}")) {
+                if (args[0] === "ps") {
                     callback(new Error("down"));
                 }
             }
@@ -103,7 +97,7 @@ describe("Ensure", () => {
     it("starts docker and waits when autoStart is true", async () => {
         startDockerMock.mockResolvedValue(undefined);
 
-        let infoCalls = 0;
+        let versionCalls = 0;
 
         execFileMock.mockImplementation(
             (
@@ -118,17 +112,14 @@ describe("Ensure", () => {
                 if (args[0] === "--version") {
                     callback(null, "Docker version 27.0.0, build abc", "");
                 } else
-                if (args[0] === "info") {
-                    infoCalls += 1;
+                if (args[0] === "ps") {
+                    versionCalls += 1;
 
-                    if (infoCalls === 1) {
+                    if (versionCalls === 1) {
                         callback(new Error("down"));
                     } else {
-                        callback(null, "ok", "");
+                        callback(null, "27.0.0", "");
                     }
-                } else
-                if (args.includes("{{.Server.Version}}")) {
-                    callback(new Error("down"));
                 }
             }
         );
@@ -154,10 +145,7 @@ describe("Ensure", () => {
                 if (args[0] === "--version") {
                     callback(null, "Docker version 27.0.0, build abc", "");
                 } else
-                if (args[0] === "info") {
-                    callback(null, "ok", "");
-                } else
-                if (args.includes("{{.Server.Version}}")) {
+                if (args[0] === "ps") {
                     callback(null, "27.0.0", "");
                 }
             }
@@ -201,10 +189,7 @@ describe("Ensure", () => {
                 if (args[0] === "--version") {
                     callback(null, "Docker version 27.0.0, build abc", "");
                 } else
-                if (args[0] === "info") {
-                    callback(new Error("down"));
-                } else
-                if (args.includes("{{.Server.Version}}")) {
+                if (args[0] === "ps") {
                     callback(new Error("down"));
                 }
             }
@@ -232,10 +217,7 @@ describe("Ensure", () => {
                 if (args[0] === "--version") {
                     callback(null, "Docker version 27.0.0, build abc", "");
                 } else
-                if (args[0] === "info") {
-                    callback(new Error("down"));
-                } else
-                if (args.includes("{{.Server.Version}}")) {
+                if (args[0] === "ps") {
                     callback(new Error("down"));
                 }
             }

@@ -1,3 +1,4 @@
+import { describeDockerDaemonProbe } from "../commands";
 import { detectDocker } from "../detect";
 import {
     DockerNotInstalledError,
@@ -50,13 +51,22 @@ export async function ensureDockerRunning(options?: EnsureDockerOptions): Promis
 
     logger.warn("Docker daemon not running.");
 
+    const executable = detection.executable ?? "docker";
+    const probe = await describeDockerDaemonProbe(executable);
+
+    if (probe.error !== undefined) {
+        const hostHint = probe.host === undefined
+            ? ""
+            : ` (DOCKER_HOST=${probe.host})`;
+
+        logger.warn(`Docker probe failed:${hostHint} ${probe.error}`);
+    }
+
     if (!autoStart) {
         throw new DockerNotRunningError();
     }
 
     logger.info("Attempting to start Docker...");
-
-    const executable = detection.executable ?? "docker";
 
     try {
         await startDocker(logger, executable);

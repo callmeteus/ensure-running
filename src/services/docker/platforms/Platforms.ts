@@ -6,6 +6,39 @@ import { launchWindowsExecutable, openMacApplication, startDockerdDetached } fro
 import { commandExists, exec } from "../utils";
 import type { ResolvedLogger } from "../logger";
 
+const WindowsDockerDesktopImageName = "Docker Desktop.exe";
+const WindowsDockerBackendImageName = "com.docker.backend.exe";
+
+/**
+ * Returns whether a Windows process image is currently running.
+ *
+ * @param imageName Executable image name, for example `Docker Desktop.exe`.
+ */
+export async function isWindowsProcessImageRunning(imageName: string): Promise<boolean> {
+    try {
+        const result = await exec("tasklist", ["/FI", `IMAGENAME eq ${imageName}`, "/NH"]);
+        const escapedImageName = imageName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+        return new RegExp(escapedImageName, "i").test(result.stdout);
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Returns whether Docker Desktop is already running on Windows.
+ */
+export async function isWindowsDockerDesktopProcessRunning(): Promise<boolean> {
+    return isWindowsProcessImageRunning(WindowsDockerDesktopImageName);
+}
+
+/**
+ * Returns whether the Docker Desktop backend process is running on Windows.
+ */
+export async function isWindowsDockerBackendProcessRunning(): Promise<boolean> {
+    return isWindowsProcessImageRunning(WindowsDockerBackendImageName);
+}
+
 /**
  * Starts Docker on Linux using available service managers or dockerd.
  *
@@ -117,6 +150,22 @@ export async function startDockerWindows(
     logger: ResolvedLogger,
     dockerExecutable = "docker"
 ): Promise<void> {
+    if (await isWindowsDockerBackendProcessRunning()) {
+        logger.info(
+            "Docker Desktop backend is already running. Waiting for the engine to become ready..."
+        );
+
+        return;
+    }
+
+    if (await isWindowsDockerDesktopProcessRunning()) {
+        logger.warn(
+            "Docker Desktop is open but the engine backend is not running. Waiting for the engine to become ready..."
+        );
+
+        return;
+    }
+
     try {
         logger.debug("Attempting: docker desktop start");
         await runDockerDesktopStart(dockerExecutable);

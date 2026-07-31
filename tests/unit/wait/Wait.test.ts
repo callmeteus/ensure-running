@@ -11,9 +11,10 @@ describe("Wait", () => {
     beforeEach(() => {
         execFileMock.mockReset();
         vi.resetModules();
+        Object.defineProperty(process, "platform", { value: "linux" });
     });
 
-    it("resolves when docker info eventually succeeds", async () => {
+    it("resolves when docker ps eventually succeeds", async () => {
         let calls = 0;
 
         execFileMock.mockImplementation(
@@ -23,11 +24,11 @@ describe("Wait", () => {
                 _opts: unknown,
                 callback: (err: Error | null, stdout?: string, stderr?: string) => void
             ) => {
-                if (args[0] === "info") {
+                if (args[0] === "ps") {
                     calls += 1;
 
                     if (calls >= 2) {
-                        callback(null, "ok", "");
+                        callback(null, "abc123\n", "");
 
                         return;
                     }

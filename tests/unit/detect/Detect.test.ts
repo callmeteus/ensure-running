@@ -32,7 +32,7 @@ describe("Detect", () => {
         expect(result).toEqual({ installed: false, running: false });
     });
 
-    it("reports installed and running when docker info succeeds", async () => {
+    it("reports installed and running when docker ps succeeds", async () => {
         execFileMock.mockImplementation(
             (
                 cmd: string,
@@ -46,11 +46,8 @@ describe("Detect", () => {
                 if (args[0] === "--version") {
                     callback(null, "Docker version 27.0.0, build abc", "");
                 } else
-                if (args[0] === "info") {
-                    callback(null, "info", "");
-                } else
-                if (args.includes("{{.Server.Version}}")) {
-                    callback(null, "27.0.0", "");
+                if (args[0] === "ps") {
+                    callback(null, "abc123\n", "");
                 }
             }
         );
@@ -64,7 +61,7 @@ describe("Detect", () => {
         expect(result.executable).toBe("/usr/bin/docker");
     });
 
-    it("reports installed but not running when info fails", async () => {
+    it("reports installed but not running when docker ps fails", async () => {
         execFileMock.mockImplementation(
             (
                 cmd: string,
@@ -78,10 +75,7 @@ describe("Detect", () => {
                 if (args[0] === "--version") {
                     callback(null, "Docker version 27.0.0, build abc", "");
                 } else
-                if (args[0] === "info") {
-                    callback(new Error("daemon down"));
-                } else
-                if (args.includes("{{.Server.Version}}")) {
+                if (args[0] === "ps") {
                     callback(new Error("daemon down"));
                 }
             }

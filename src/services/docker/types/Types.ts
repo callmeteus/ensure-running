@@ -39,10 +39,32 @@ export interface DockerDetectionResult {
 }
 
 /**
+ * Default wait time for Docker Desktop to finish booting on Windows.
+ */
+export const WindowsDockerReadyTimeoutMs = 300_000;
+
+/**
+ * Default wait time for Docker daemon readiness on other platforms.
+ */
+export const DefaultDockerReadyTimeoutMs = 120_000;
+
+/**
+ * Resolves the default daemon readiness timeout for the current platform.
+ */
+export function resolveDefaultDockerTimeout(): number {
+    return process.platform === "win32"
+        ? WindowsDockerReadyTimeoutMs
+        : DefaultDockerReadyTimeoutMs;
+}
+
+/**
  * Default options merged into {@link ensureDockerRunning} calls.
  */
 export const DefaultEnsureDockerOptions: Required<Pick<EnsureDockerOptions, "timeout" | "interval" | "autoStart">> = {
-    timeout: 120_000,
+    get timeout() {
+        return resolveDefaultDockerTimeout();
+    },
+
     interval: 1_000,
     autoStart: true
 };
@@ -51,6 +73,9 @@ export const DefaultEnsureDockerOptions: Required<Pick<EnsureDockerOptions, "tim
  * Default poll options for internal readiness checks.
  */
 export const DefaultPollOptions = {
-    timeout: 120_000,
+    get timeout() {
+        return resolveDefaultDockerTimeout();
+    },
+
     interval: 1_000
 } as const;

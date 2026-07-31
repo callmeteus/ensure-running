@@ -34,7 +34,7 @@ describe("Commands", () => {
         expect(path).toBe("/usr/bin/docker");
     });
 
-    it("isDockerDaemonReachable returns true on docker info success", async () => {
+    it("isDockerDaemonReachable returns true on docker ps success", async () => {
         execFileMock.mockImplementation(
             (
                 _cmd: string,
@@ -42,8 +42,8 @@ describe("Commands", () => {
                 _opts: unknown,
                 callback: (err: null, stdout: string, stderr: string) => void
             ) => {
-                if (args[0] === "info") {
-                    callback(null, "info", "");
+                if (args[0] === "ps") {
+                    callback(null, "abc123\n", "");
                 }
             }
         );
@@ -81,7 +81,7 @@ describe("Commands", () => {
                 if (args[0] === "--version") {
                     callback(null, "Docker version 27.0.0, build abc", "");
                 } else
-                if (args.includes("{{.Server.Version}}")) {
+                if (args[0] === "ps") {
                     callback(null, "27.0.0", "");
                 }
             }
@@ -178,7 +178,7 @@ describe("Commands", () => {
                 if (args[0] === "--version") {
                     callback(null, "Docker version 27.0.0, build abc", "");
                 } else
-                if (args.includes("{{.Server.Version}}")) {
+                if (args[0] === "ps") {
                     callback(new Error("daemon down"));
                 }
             }

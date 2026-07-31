@@ -31,11 +31,8 @@ function mockDockerRunning(): void {
             if (args[0] === "--version") {
                 callback(null, "Docker version 27.0.0, build abc", "");
             } else
-            if (args[0] === "info") {
-                callback(null, "ok", "");
-            } else
-            if (args.includes("{{.Server.Version}}")) {
-                callback(null, "27.0.0", "");
+            if (args[0] === "ps") {
+                callback(null, "abc123\n", "");
             }
         }
     );
@@ -55,10 +52,7 @@ function mockDockerDaemonDown(): void {
             if (args[0] === "--version") {
                 callback(null, "Docker version 27.0.0, build abc", "");
             } else
-            if (args[0] === "info") {
-                callback(new Error("daemon down"), "", "");
-            } else
-            if (args.includes("{{.Server.Version}}")) {
+            if (args[0] === "ps") {
                 callback(new Error("daemon down"), "", "");
             }
         }
